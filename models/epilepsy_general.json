@@ -1,0 +1,111 @@
+{
+  "model_id": "epilepsy_general",
+  "created_at": "2026-10-29T13:41:35+00:00",
+  "title": "كشف الصرع — نموذج عام لشخص جديد",
+  "track": "epilepsy",
+  "dataset": "CHB-MIT (PhysioNet) — 3 مرضى، 37 تسجيلاً، 36 ساعة، 19 نوبة",
+  "evaluation": "اترك مريضاً واحداً: ندرّب على المرضى الآخرين ونختبر على كل ملفات هذا المريض.",
+  "seizure_events": {
+    "n_seizures": 19,
+    "detected": 6,
+    "false_alarms": 263,
+    "hours": 36.388333333333335,
+    "latencies": [
+      53.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "sensitivity": 0.3157894736842105,
+    "false_alarms_per_hour": 7.227591260935281,
+    "mean_latency_sec": 8.833333333333334
+  },
+  "per_patient": [
+    {
+      "patient": "chb01",
+      "files": 13,
+      "n_seizures": 7,
+      "detected": 0,
+      "false_alarms": 1,
+      "hours": 12.385555555555555,
+      "latencies": [],
+      "sensitivity": 0.0,
+      "false_alarms_per_hour": 0.08073921234412847,
+      "mean_latency_sec": null
+    },
+    {
+      "patient": "chb03",
+      "files": 13,
+      "n_seizures": 7,
+      "detected": 1,
+      "false_alarms": 2,
+      "hours": 13.0,
+      "latencies": [
+        53.0
+      ],
+      "sensitivity": 0.14285714285714285,
+      "false_alarms_per_hour": 0.15384615384615385,
+      "mean_latency_sec": 53.0
+    },
+    {
+      "patient": "chb05",
+      "files": 11,
+      "n_seizures": 5,
+      "detected": 5,
+      "false_alarms": 260,
+      "hours": 11.002777777777778,
+      "latencies": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "sensitivity": 1.0,
+      "false_alarms_per_hour": 23.630396364554404,
+      "mean_latency_sec": 0.0
+    }
+  ],
+  "summary": {
+    "n": 65461,
+    "labels": [
+      "طبيعي",
+      "نوبة"
+    ],
+    "accuracy": 0.8632162661737524,
+    "balanced_accuracy": 0.5154245316246454,
+    "kappa": 0.0048359612583595,
+    "chance_uniform": 0.5,
+    "chance_majority": 0.9891080185148409,
+    "per_class_recall": {
+      "طبيعي": 0.8709612652128251,
+      "نوبة": 0.15988779803646563
+    },
+    "confusion_matrix": [
+      [
+        56393,
+        8355
+      ],
+      [
+        599,
+        114
+      ]
+    ]
+  },
+  "settings": {
+    "window_sec": 4.0,
+    "step_sec": 2.0,
+    "threshold": 0.5,
+    "vote": "3 من 4 نوافذ",
+    "feature_version": 1
+  },
+  "notes": [
+    "الحساسية: نسبة النوبات الحقيقية التي اكتُشفت.",
+    "الإنذارات الكاذبة/ساعة: كم مرة أنذر النظام بلا نوبة. المستشفيات تقبل عادة أقل من 1 في الساعة.",
+    "زمن الاكتشاف: من بداية النوبة كما حددها الأطباء حتى لحظة الإنذار الفعلي.",
+    "نموذج يقول «لا نوبة» دائماً دقته فوق 99% وحساسيته 0% — لذلك لا نعتمد على الدقة.",
+    "هذا النموذج هو المستخدم لتحليل الملفات التي ترفعها في صفحة فحص الصرع."
+  ]
+}

@@ -1,0 +1,16 @@
+# المكتبات الأساسية — تُثبَّت بالأمر:
+#   .venv\Scripts\python -m pip install -r requirements.txt
+numpy>=2.0
+scipy>=1.13
+mne>=1.8            # قراءة ملفات EDF ومعالجة EEG
+scikit-learn>=1.5   # المصنّفات وأدوات التقييم
+joblib>=1.4         # حفظ النماذج المدرَّبة
+moabb>=1.1          # مجموعات بيانات الكتابة بالدماغ وتقييمها القياسي
+pyriemann>=0.6      # مصنّفات تعتمد على مصفوفات التغاير
+brainflow>=5.12     # واجهة موحّدة لأجهزة EEG (ومنها جهاز محاكى)
+fastapi>=0.115
+uvicorn[standard]>=0.30
+python-multipart>=0.0.9   # رفع الملفات في الواجهة
+python-dotenv>=1.0
+pytest>=8.0
+httpx>=0.27         # لاختبارات الـ API

@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+.pytest_cache/
+.env
+models/*.joblib
+web/node_modules/
+web/dist/
+*.edf
+.claude-flow/
+web/test-results/
+web/playwright-report/
+*.tsbuildinfo

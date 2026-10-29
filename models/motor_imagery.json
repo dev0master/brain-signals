@@ -1,0 +1,612 @@
+{
+  "model_id": "motor_imagery",
+  "created_at": "2026-10-29T14:26:25+00:00",
+  "title": "الكتابة بالدماغ — تمييز 4 أوامر متخيَّلة",
+  "track": "motor_imagery",
+  "dataset": "BNCI 2014-001 (BCI Competition IV 2a) — 9 أشخاص، جلستان في يومين، 288 محاولة لكل جلسة",
+  "evaluation": "الطريقة تُختار وتُدرَّب على اليوم الأول فقط، وتُختبر على اليوم الثاني الذي لم تره.",
+  "summary": {
+    "n": 2592,
+    "labels": [
+      "اليد اليسرى",
+      "اليد اليمنى",
+      "القدمان",
+      "اللسان"
+    ],
+    "accuracy": 0.6446759259259259,
+    "balanced_accuracy": 0.6446759259259258,
+    "kappa": 0.5262345679012346,
+    "chance_uniform": 0.25,
+    "chance_majority": 0.25,
+    "per_class_recall": {
+      "اليد اليسرى": 0.5879629629629629,
+      "اليد اليمنى": 0.6851851851851852,
+      "القدمان": 0.6126543209876543,
+      "اللسان": 0.6929012345679012
+    },
+    "confusion_matrix": [
+      [
+        381,
+        142,
+        67,
+        58
+      ],
+      [
+        71,
+        444,
+        87,
+        46
+      ],
+      [
+        42,
+        49,
+        397,
+        160
+      ],
+      [
+        44,
+        55,
+        100,
+        449
+      ]
+    ]
+  },
+  "per_subject": [
+    {
+      "subject": 1,
+      "pipeline": "riemann_ts_lr",
+      "pipeline_ar": "ريماني: فضاء مماسي + انحدار لوجستي",
+      "inner_cv": {
+        "csp_lda": 0.7713248638838476,
+        "riemann_ts_lr": 0.7780399274047187,
+        "riemann_mdm": 0.7433756805807622
+      },
+      "test_accuracy": 0.8298611111111112,
+      "kappa": 0.7731481481481481,
+      "n_train": 288,
+      "n_test": 288,
+      "day1_recall": {
+        "left_hand": 0.7777777777777778,
+        "right_hand": 0.9027777777777778,
+        "feet": 0.6527777777777778,
+        "tongue": 0.7777777777777778
+      },
+      "day2_recall": {
+        "left_hand": 0.9722222222222222,
+        "right_hand": 0.8333333333333334,
+        "feet": 0.7222222222222222,
+        "tongue": 0.7916666666666666
+      },
+      "mapping": {
+        "select": "right_hand",
+        "left": "left_hand",
+        "right": "tongue",
+        "back": "feet"
+      },
+      "mapping_search_day1": {
+        "default": {
+          "completion_rate": 0.8,
+          "median_commands": 109.0
+        },
+        "ranked": {
+          "completion_rate": 1.0,
+          "median_commands": 65.0
+        },
+        "chose": "ranked"
+      },
+      "spelling": {
+        "target": "أحتاج ماء",
+        "runs": 20,
+        "completion_rate": 1.0,
+        "median_commands": 23.5,
+        "median_chars_per_minute": 3.875,
+        "ideal_commands": 18
+      },
+      "spelling_default_mapping": {
+        "target": "أحتاج ماء",
+        "runs": 20,
+        "completion_rate": 1.0,
+        "median_commands": 33.5,
+        "median_chars_per_minute": 2.69,
+        "ideal_commands": 18
+      }
+    },
+    {
+      "subject": 2,
+      "pipeline": "csp_lda",
+      "pipeline_ar": "CSP + مصنّف خطي",
+      "inner_cv": {
+        "csp_lda": 0.49322444041137325,
+        "riemann_ts_lr": 0.4690865093768905,
+        "riemann_mdm": 0.3995160314579552
+      },
+      "test_accuracy": 0.4097222222222222,
+      "kappa": 0.2129629629629629,
+      "n_train": 288,
+      "n_test": 288,
+      "day1_recall": {
+        "left_hand": 0.3611111111111111,
+        "right_hand": 0.4444444444444444,
+        "feet": 0.6805555555555556,
+        "tongue": 0.4861111111111111
+      },
+      "day2_recall": {
+        "left_hand": 0.18055555555555555,
+        "right_hand": 0.1527777777777778,
+        "feet": 0.9166666666666666,
+        "tongue": 0.3888888888888889
+      },
+      "mapping": {
+        "left": "left_hand",
+        "right": "right_hand",
+        "select": "feet",
+        "back": "tongue"
+      },
+      "mapping_search_day1": {
+        "default": {
+          "completion_rate": 0.1,
+          "median_commands": 200.0
+        },
+        "ranked": {
+          "completion_rate": 0.06666666666666667,
+          "median_commands": 200.0
+        },
+        "chose": "default"
+      },
+      "spelling": {
+        "target": "أحتاج ماء",
+        "runs": 20,
+        "completion_rate": 0.0,
+        "median_commands": 300.0,
+        "median_chars_per_minute": null,
+        "ideal_commands": 18
+      },
+      "spelling_default_mapping": {
+        "target": "أحتاج ماء",
+        "runs": 20,
+        "completion_rate": 0.0,
+        "median_commands": 300.0,
+        "median_chars_per_minute": null,
+        "ideal_commands": 18
+      }
+    },
+    {
+      "subject": 3,
+      "pipeline": "csp_lda",
+      "pipeline_ar": "CSP + مصنّف خطي",
+      "inner_cv": {
+        "csp_lda": 0.8611010284331518,
+        "riemann_ts_lr": 0.8508166969147005,
+        "riemann_mdm": 0.6906231094978826
+      },
+      "test_accuracy": 0.75,
+      "kappa": 0.6666666666666667,
+      "n_train": 288,
+      "n_test": 288,
+      "day1_recall": {
+        "left_hand": 0.9166666666666666,
+        "right_hand": 0.9305555555555556,
+        "feet": 0.7777777777777778,
+        "tongue": 0.8194444444444444
+      },
+      "day2_recall": {
+        "left_hand": 0.8333333333333334,
+        "right_hand": 0.9722222222222222,
+        "feet": 0.3194444444444444,
+        "tongue": 0.875
+      },
+      "mapping": {
+        "left": "left_hand",
+        "right": "right_hand",
+        "select": "feet",
+        "back": "tongue"
+      },
+      "mapping_search_day1": {
+        "default": {
+          "completion_rate": 1.0,
+          "median_commands": 55.5
+        },
+        "ranked": {
+          "completion_rate": 1.0,
+          "median_commands": 52.5
+        },
+        "chose": "default"
+      },
+      "spelling": {
+        "target": "أحتاج ماء",
+        "runs": 20,
+        "completion_rate": 0.25,
+        "median_commands": 300.0,
+        "median_chars_per_minute": 0.87,
+        "ideal_commands": 18
+      },
+      "spelling_default_mapping": {
+        "target": "أحتاج ماء",
+        "runs": 20,
+        "completion_rate": 0.25,
+        "median_commands": 300.0,
+        "median_chars_per_minute": 0.87,
+        "ideal_commands": 18
+      }
+    },
+    {
+      "subject": 4,
+      "pipeline": "riemann_ts_lr",
+      "pipeline_ar": "ريماني: فضاء مماسي + انحدار لوجستي",
+      "inner_cv": {
+        "csp_lda": 0.4862673926194797,
+        "riemann_ts_lr": 0.5727767695099818,
+        "riemann_mdm": 0.46842105263157896
+      },
+      "test_accuracy": 0.6041666666666666,
+      "kappa": 0.4722222222222222,
+      "n_train": 288,
+      "n_test": 288,
+      "day1_recall": {
+        "left_hand": 0.5,
+        "right_hand": 0.5972222222222222,
+        "feet": 0.6111111111111112,
+        "tongue": 0.5833333333333334
+      },
+      "day2_recall": {
+        "left_hand": 0.5833333333333334,
+        "right_hand": 0.8055555555555556,
+        "feet": 0.375,
+        "tongue": 0.6527777777777778
+      },
+      "mapping": {
+        "left": "left_hand",
+        "right": "right_hand",
+        "select": "feet",
+        "back": "tongue"
+      },
+      "mapping_search_day1": {
+        "default": {
+          "completion_rate": 0.21666666666666667,
+          "median_commands": 200.0
+        },
+        "ranked": {
+          "completion_rate": 0.2833333333333333,
+          "median_commands": 200.0
+        },
+        "chose": "default"
+      },
+      "spelling": {
+        "target": "أحتاج ماء",
+        "runs": 20,
+        "completion_rate": 0.4,
+        "median_commands": 300.0,
+        "median_chars_per_minute": 0.815,
+        "ideal_commands": 18
+      },
+      "spelling_default_mapping": {
+        "target": "أحتاج ماء",
+        "runs": 20,
+        "completion_rate": 0.4,
+        "median_commands": 300.0,
+        "median_chars_per_minute": 0.815,
+        "ideal_commands": 18
+      }
+    },
+    {
+      "subject": 5,
+      "pipeline": "riemann_ts_lr",
+      "pipeline_ar": "ريماني: فضاء مماسي + انحدار لوجستي",
+      "inner_cv": {
+        "csp_lda": 0.3676950998185118,
+        "riemann_ts_lr": 0.4026013309134906,
+        "riemann_mdm": 0.3644888082274652
+      },
+      "test_accuracy": 0.4791666666666667,
+      "kappa": 0.3055555555555556,
+      "n_train": 288,
+      "n_test": 288,
+      "day1_recall": {
+        "left_hand": 0.4305555555555556,
+        "right_hand": 0.3194444444444444,
+        "feet": 0.375,
+        "tongue": 0.4861111111111111
+      },
+      "day2_recall": {
+        "left_hand": 0.6666666666666666,
+        "right_hand": 0.4166666666666667,
+        "feet": 0.2222222222222222,
+        "tongue": 0.6111111111111112
+      },
+      "mapping": {
+        "left": "left_hand",
+        "right": "right_hand",
+        "select": "feet",
+        "back": "tongue"
+      },
+      "mapping_search_day1": {
+        "default": {
+          "completion_rate": 0.0,
+          "median_commands": 200.0
+        },
+        "ranked": {
+          "completion_rate": 0.0,
+          "median_commands": 200.0
+        },
+        "chose": "default"
+      },
+      "spelling": {
+        "target": "أحتاج ماء",
+        "runs": 20,
+        "completion_rate": 0.0,
+        "median_commands": 300.0,
+        "median_chars_per_minute": null,
+        "ideal_commands": 18
+      },
+      "spelling_default_mapping": {
+        "target": "أحتاج ماء",
+        "runs": 20,
+        "completion_rate": 0.0,
+        "median_commands": 300.0,
+        "median_chars_per_minute": null,
+        "ideal_commands": 18
+      }
+    },
+    {
+      "subject": 6,
+      "pipeline": "riemann_ts_lr",
+      "pipeline_ar": "ريماني: فضاء مماسي + انحدار لوجستي",
+      "inner_cv": {
+        "csp_lda": 0.4335148215366001,
+        "riemann_ts_lr": 0.5169388989715669,
+        "riemann_mdm": 0.461222020568663
+      },
+      "test_accuracy": 0.5173611111111112,
+      "kappa": 0.3564814814814815,
+      "n_train": 288,
+      "n_test": 288,
+      "day1_recall": {
+        "left_hand": 0.4861111111111111,
+        "right_hand": 0.5416666666666666,
+        "feet": 0.5138888888888888,
+        "tongue": 0.5277777777777778
+      },
+      "day2_recall": {
+        "left_hand": 0.5833333333333334,
+        "right_hand": 0.6111111111111112,
+        "feet": 0.4861111111111111,
+        "tongue": 0.3888888888888889
+      },
+      "mapping": {
+        "left": "left_hand",
+        "right": "right_hand",
+        "select": "feet",
+        "back": "tongue"
+      },
+      "mapping_search_day1": {
+        "default": {
+          "completion_rate": 0.08333333333333333,
+          "median_commands": 200.0
+        },
+        "ranked": {
+          "completion_rate": 0.06666666666666667,
+          "median_commands": 200.0
+        },
+        "chose": "default"
+      },
+      "spelling": {
+        "target": "أحتاج ماء",
+        "runs": 20,
+        "completion_rate": 0.85,
+        "median_commands": 152.5,
+        "median_chars_per_minute": 0.62,
+        "ideal_commands": 18
+      },
+      "spelling_default_mapping": {
+        "target": "أحتاج ماء",
+        "runs": 20,
+        "completion_rate": 0.85,
+        "median_commands": 152.5,
+        "median_chars_per_minute": 0.62,
+        "ideal_commands": 18
+      }
+    },
+    {
+      "subject": 7,
+      "pipeline": "csp_lda",
+      "pipeline_ar": "CSP + مصنّف خطي",
+      "inner_cv": {
+        "csp_lda": 0.7540229885057472,
+        "riemann_ts_lr": 0.733091349062311,
+        "riemann_mdm": 0.6429522081064731
+      },
+      "test_accuracy": 0.6354166666666666,
+      "kappa": 0.5138888888888888,
+      "n_train": 288,
+      "n_test": 288,
+      "day1_recall": {
+        "left_hand": 0.7777777777777778,
+        "right_hand": 0.6388888888888888,
+        "feet": 0.8611111111111112,
+        "tongue": 0.7361111111111112
+      },
+      "day2_recall": {
+        "left_hand": 0.05555555555555555,
+        "right_hand": 0.8888888888888888,
+        "feet": 0.6944444444444444,
+        "tongue": 0.9027777777777778
+      },
+      "mapping": {
+        "left": "left_hand",
+        "right": "right_hand",
+        "select": "feet",
+        "back": "tongue"
+      },
+      "mapping_search_day1": {
+        "default": {
+          "completion_rate": 1.0,
+          "median_commands": 61.0
+        },
+        "ranked": {
+          "completion_rate": 0.9833333333333333,
+          "median_commands": 53.0
+        },
+        "chose": "default"
+      },
+      "spelling": {
+        "target": "أحتاج ماء",
+        "runs": 20,
+        "completion_rate": 0.85,
+        "median_commands": 167.5,
+        "median_chars_per_minute": 0.57,
+        "ideal_commands": 18
+      },
+      "spelling_default_mapping": {
+        "target": "أحتاج ماء",
+        "runs": 20,
+        "completion_rate": 0.85,
+        "median_commands": 167.5,
+        "median_chars_per_minute": 0.57,
+        "ideal_commands": 18
+      }
+    },
+    {
+      "subject": 8,
+      "pipeline": "riemann_ts_lr",
+      "pipeline_ar": "ريماني: فضاء مماسي + انحدار لوجستي",
+      "inner_cv": {
+        "csp_lda": 0.8158499697519662,
+        "riemann_ts_lr": 0.8506957047791893,
+        "riemann_mdm": 0.7636418632788868
+      },
+      "test_accuracy": 0.7743055555555556,
+      "kappa": 0.6990740740740741,
+      "n_train": 288,
+      "n_test": 288,
+      "day1_recall": {
+        "left_hand": 0.8888888888888888,
+        "right_hand": 0.8472222222222222,
+        "feet": 0.7777777777777778,
+        "tongue": 0.8888888888888888
+      },
+      "day2_recall": {
+        "left_hand": 0.7083333333333334,
+        "right_hand": 0.7222222222222222,
+        "feet": 0.9444444444444444,
+        "tongue": 0.7222222222222222
+      },
+      "mapping": {
+        "select": "left_hand",
+        "left": "tongue",
+        "right": "right_hand",
+        "back": "feet"
+      },
+      "mapping_search_day1": {
+        "default": {
+          "completion_rate": 1.0,
+          "median_commands": 56.0
+        },
+        "ranked": {
+          "completion_rate": 1.0,
+          "median_commands": 48.5
+        },
+        "chose": "ranked"
+      },
+      "spelling": {
+        "target": "أحتاج ماء",
+        "runs": 20,
+        "completion_rate": 0.7,
+        "median_commands": 134.5,
+        "median_chars_per_minute": 1.27,
+        "ideal_commands": 18
+      },
+      "spelling_default_mapping": {
+        "target": "أحتاج ماء",
+        "runs": 20,
+        "completion_rate": 1.0,
+        "median_commands": 38.0,
+        "median_chars_per_minute": 2.37,
+        "ideal_commands": 18
+      }
+    },
+    {
+      "subject": 9,
+      "pipeline": "riemann_ts_lr",
+      "pipeline_ar": "ريماني: فضاء مماسي + انحدار لوجستي",
+      "inner_cv": {
+        "csp_lda": 0.7849364791288567,
+        "riemann_ts_lr": 0.8160314579552328,
+        "riemann_mdm": 0.7361766485178463
+      },
+      "test_accuracy": 0.8020833333333334,
+      "kappa": 0.7361111111111112,
+      "n_train": 288,
+      "n_test": 288,
+      "day1_recall": {
+        "left_hand": 0.9305555555555556,
+        "right_hand": 0.7777777777777778,
+        "feet": 0.6944444444444444,
+        "tongue": 0.8611111111111112
+      },
+      "day2_recall": {
+        "left_hand": 0.7083333333333334,
+        "right_hand": 0.7638888888888888,
+        "feet": 0.8333333333333334,
+        "tongue": 0.9027777777777778
+      },
+      "mapping": {
+        "select": "left_hand",
+        "left": "tongue",
+        "right": "right_hand",
+        "back": "feet"
+      },
+      "mapping_search_day1": {
+        "default": {
+          "completion_rate": 1.0,
+          "median_commands": 67.0
+        },
+        "ranked": {
+          "completion_rate": 1.0,
+          "median_commands": 55.5
+        },
+        "chose": "ranked"
+      },
+      "spelling": {
+        "target": "أحتاج ماء",
+        "runs": 20,
+        "completion_rate": 1.0,
+        "median_commands": 43.5,
+        "median_chars_per_minute": 2.07,
+        "ideal_commands": 18
+      },
+      "spelling_default_mapping": {
+        "target": "أحتاج ماء",
+        "runs": 20,
+        "completion_rate": 1.0,
+        "median_commands": 28.5,
+        "median_chars_per_minute": 3.1550000000000002,
+        "ideal_commands": 18
+      }
+    }
+  ],
+  "mean_subject_accuracy": 0.6446759259259259,
+  "settings": {
+    "window_after_cue_sec": [
+      0.5,
+      2.5
+    ],
+    "band_hz": [
+      8.0,
+      30.0
+    ],
+    "pipelines": {
+      "csp_lda": "CSP + مصنّف خطي",
+      "riemann_ts_lr": "ريماني: فضاء مماسي + انحدار لوجستي",
+      "riemann_mdm": "ريماني: أقرب متوسط"
+    }
+  },
+  "notes": [
+    "مستوى الصدفة 25%: أربعة أوامر متساوية العدد.",
+    "يتفاوت الناس كثيراً: بعضهم يُنتج إشارة تخيّل واضحة وبعضهم بالكاد — ظاهرة معروفة في أبحاث BCI.",
+    "الدقة هنا لكل محاولة منفردة مدتها ثانيتان. في لوحة الحروف يصحح المستخدم الأخطاء بأمر «رجوع».",
+    "توزيع الأوامر: مرشّحان — الافتراضي، أو «الأمر الأهم للتخيّل الأدق». نقارنهما بمحاكاة الكتابة على توقعات اليوم الأول فقط وبجمل مختلفة عن جملة التقييم (شكرا لك، أين الطبيب)، ولا نترك الافتراضي إلا بفارق واضح. تجربة التوزيعات الـ24 كلها فشلت: الفائز في اليوم الأول كان غالباً المحظوظ لا الأفضل (لعنة الفائز). نعرض أيضاً السرعة بالتوزيع الافتراضي للمقارنة.",
+    "سرعة الكتابة: وسيط 20 محاكاة لكتابة «أحتاج ماء» بمحاولات حقيقية من اليوم الثاني، بافتراض 6 ثوانٍ لكل أمر. المحاكاة تتوقف بعد 300 أمر (30 دقيقة) إن لم تكتمل.",
+    "تنبيه صدق: أثناء التطوير جرّبنا ثلاث طرق لاختيار التوزيع ورأينا نتائجها على اليوم الثاني قبل أن نستقر على هذه. لذلك قد تكون أرقام الكتابة متفائلة قليلاً؛ التقييم النظيف تماماً يحتاج جلسة ثالثة أو أشخاصاً جدداً.",
+    "بعض المشكلات لا تظهر إلا في اليوم الثاني (إشارة الدماغ تتغير بين يوم وآخر)، فلا يمكن توقعها من اليوم الأول. الأنظمة الحقيقية تعالج هذا بمعايرة قصيرة في بداية كل جلسة."
+  ]
+}

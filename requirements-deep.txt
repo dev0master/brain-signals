@@ -1,0 +1,4 @@
+# التعلّم العميق (EEGNet) — اختياري، يُثبَّت في مرحلة الكتابة بالدماغ:
+#   .venv\Scripts\python -m pip install -r requirements-deep.txt --index-url https://download.pytorch.org/whl/cpu --extra-index-url https://pypi.org/simple
+torch>=2.4
+braindecode>=0.8
