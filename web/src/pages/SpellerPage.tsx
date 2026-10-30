@@ -1,10 +1,17 @@
 import { useQuery } from "@tanstack/react-query";
-import { Pause, Play, RotateCcw } from "lucide-react";
+import { Pause, Play, RotateCcw, Square } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import { QualityChips } from "../components/QualityChips";
 import { getJson } from "../lib/api";
+import { calibrationProgress, calibrationPrompt, spellerPrompt } from "../lib/device";
 import { formatClock } from "../lib/liveStore";
 import { commandForKey, commandsFor, errorsUpTo, isDefaultMapping, simulatedSeconds, speedLabel } from "../lib/speller";
-import type { CommandMeta, SimResult, SpellerCommand, SpellerInfo, SpellerSubject, SpellerView } from "../lib/types";
+import type {
+  CalibrationLive, CommandMeta, DeviceState, SimResult, SpellerCommand, SpellerInfo, SpellerLive, SpellerSubject,
+  SpellerView,
+} from "../lib/types";
+import { useLiveStream } from "../lib/useLiveStream";
 
 const EXAMPLES = ["أحتاج ماء", "نعم", "ألم في رأسي", "شكرا"];
 const SPEEDS = [
@@ -26,7 +33,8 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
 export function SpellerPage() {
   const info = useQuery({ queryKey: ["speller-info"], queryFn: () => getJson<SpellerInfo>("/api/speller/info") });
   const subjects = useQuery({ queryKey: ["speller-subjects"], queryFn: () => getJson<SpellerSubject[]>("/api/speller/subjects") });
-  const [mode, setMode] = useState<"sim" | "manual">("sim");
+  const [params] = useSearchParams();
+  const [mode, setMode] = useState<"sim" | "manual" | "device">(params.get("mode") === "device" ? "device" : "sim");
 
   return (
     <div className="page">
@@ -41,13 +49,214 @@ export function SpellerPage() {
       <div className="seg">
         <button className={mode === "sim" ? "active" : ""} onClick={() => setMode("sim")}>محاكاة بإشارات حقيقية</button>
         <button className={mode === "manual" ? "active" : ""} onClick={() => setMode("manual")}>جرّب اللوحة بنفسك</button>
+        <button className={mode === "device" ? "active" : ""} onClick={() => setMode("device")}>بجهازك</button>
       </div>
 
       {info.error && <div className="banner banner-bad">{(info.error as Error).message}</div>}
-      {info.data && (mode === "sim"
-        ? <Simulation info={info.data} subjects={subjects.data ?? []} />
-        : <Manual info={info.data} />)}
+      {info.data && mode === "sim" && <Simulation info={info.data} subjects={subjects.data ?? []} />}
+      {info.data && mode === "manual" && <Manual info={info.data} />}
+      {info.data && mode === "device" && <DeviceSpeller />}
     </div>
+  );
+}
+
+// ---------- بجهازك: معايرة ثم كتابة ----------
+
+const PER_CLASS_OPTIONS = [6, 10, 15, 20];
+const SECONDS_PER_TRIAL = 8; // استعداد 2 + تخيّل 4 + راحة 2 تقريباً
+
+function DeviceSpeller() {
+  const device = useQuery({ queryKey: ["device"], queryFn: () => getJson<DeviceState>("/api/device") });
+  const [stage, setStage] = useState<"idle" | "calibrating" | "typing">("idle");
+  const [perClass, setPerClass] = useState(10);
+  const [target, setTarget] = useState("");
+  const [minConf, setMinConf] = useState(0);
+  const mi = device.data?.readiness?.find((r) => r.track === "motor_imagery");
+  const back = () => { setStage("idle"); device.refetch(); };
+
+  if (device.isLoading) return <p className="muted">جارٍ التحميل…</p>;
+  if (!device.data?.config) {
+    return (
+      <section className="card">
+        <p>لم تُعِدّ جهازاً بعد. افتح صفحة <Link to="/device">جهازك</Link> واختر جهازك (أو الجهاز المحاكى للتجربة).</p>
+      </section>
+    );
+  }
+  if (mi?.status === "unsupported") return <div className="banner banner-bad">{mi.reason}</div>;
+  if (stage === "calibrating") return <CalibrationRun perClass={perClass} onExit={back} onType={() => setStage("typing")} />;
+  if (stage === "typing") return <LiveTyping target={target} minConfidence={minConf} onExit={back} />;
+
+  const minutes = Math.round((perClass * 4 * SECONDS_PER_TRIAL) / 60);
+  return (
+    <>
+      <div className="banner banner-info">
+        نماذج الأشخاص التسعة لا تصلح لك: كل نموذج تعلّم دماغ صاحبه. لذلك تبدأ بـ<strong>معايرة</strong>: يظهر أمر على الشاشة
+        فتتخيّل الحركة 4 ثوانٍ دون أن تتحرك، وكل أمر يتكرر بترتيب عشوائي. ثم يتدرّب نموذجك وتبدأ الكتابة.
+      </div>
+      <div className="grid-2">
+        <section className="card">
+          <h2>1. المعايرة</h2>
+          <div className="controls">
+            <label>
+              محاولات لكل أمر
+              <select value={perClass} onChange={(e) => setPerClass(Number(e.target.value))}>
+                {PER_CLASS_OPTIONS.map((n) => <option key={n} value={n}>{n} (نحو {Math.round((n * 4 * SECONDS_PER_TRIAL) / 60)} دقائق)</option>)}
+              </select>
+            </label>
+            <button className="btn btn-primary" onClick={() => setStage("calibrating")}>
+              <Play size={15} aria-hidden /> ابدأ المعايرة
+            </button>
+          </div>
+          <p className="small muted">
+            {minutes} دقائق تقريباً. محاولات أكثر = نموذج أدق. قبل البدء تأكد في{" "}
+            <Link to="/?source=device">البث المباشر</Link> أن الأقطاب «جيدة»، خصوصاً C3 وC4.
+          </p>
+          {mi?.status === "ready" && mi.accuracy != null && (
+            <p className="small">آخر معايرة: دقة <span className="num">{Math.round(mi.accuracy * 100)}%</span> (الصدفة 25%).</p>
+          )}
+        </section>
+        <section className="card">
+          <h2>2. الكتابة</h2>
+          {mi?.status !== "ready" ? (
+            <p className="muted">تُفتح بعد أول معايرة.</p>
+          ) : (
+            <>
+              <div className="controls">
+                <label className="grow">
+                  جملة تتدرّب على كتابتها (اختياري)
+                  <input value={target} onChange={(e) => setTarget(e.target.value)} maxLength={40} placeholder="مثل: نعم" />
+                </label>
+                <label>
+                  لا تنفّذ إن كانت الثقة أقل من
+                  <select value={minConf} onChange={(e) => setMinConf(Number(e.target.value))}>
+                    {[0, 0.4, 0.5, 0.6].map((v) => <option key={v} value={v}>{v ? `${v * 100}%` : "نفّذ دائماً"}</option>)}
+                  </select>
+                </label>
+                <button className="btn btn-primary" onClick={() => setStage("typing")}>
+                  <Play size={15} aria-hidden /> ابدأ الكتابة
+                </button>
+              </div>
+              <p className="small muted">كل 6 ثوانٍ أمر واحد: «استعد» ثم «تخيّل الآن»، والنموذج يقرأ ما تخيّلته وينفّذه.</p>
+            </>
+          )}
+        </section>
+      </div>
+    </>
+  );
+}
+
+function CalibrationRun({ perClass, onExit, onType }: { perClass: number; onExit: () => void; onType: () => void }) {
+  const live = useLiveStream("device", 1, 0, { task: "mi_calibration", per_class: perClass });
+  const c = live.last?.calibration as CalibrationLive | undefined;
+  const prompt = c ? calibrationPrompt(c) : { title: "جارٍ الاتصال بالجهاز…", hint: "", tone: "info" };
+  const result = c?.result;
+  return (
+    <>
+      {live.error && <div className="banner banner-bad">{live.error}</div>}
+      <section className={`card cue cue-${prompt.tone}`} aria-live="assertive">
+        <div className="cue-title">{prompt.title}</div>
+        {prompt.hint && <div className="cue-hint">{prompt.hint}</div>}
+        {c && c.remaining_sec !== undefined && c.phase !== "done" && <div className="num faint">{Math.ceil(c.remaining_sec)}</div>}
+      </section>
+      {c && (
+        <section className="card">
+          <div className="seizure-row">
+            <span className="small">المحاولة <span className="num">{Math.min(c.trial ?? c.collected, c.n_trials)}</span> من <span className="num">{c.n_trials}</span></span>
+            <div className="meter grow-meter"><div className="meter-fill" style={{ width: `${Math.round(calibrationProgress(c) * 100)}%` }} /></div>
+            <button className="btn" onClick={onExit}><Square size={14} aria-hidden /> {c.phase === "done" ? "رجوع" : "أوقف"}</button>
+          </div>
+          <div className="small muted" style={{ marginTop: 10 }}>جودة الأقطاب الآن:</div>
+          <QualityChips names={live.hello?.ch_names ?? []} quality={live.last?.quality} />
+        </section>
+      )}
+      {result && (
+        <section className="card">
+          <h2>نتيجة معايرتك</h2>
+          <div className="vs-chance">
+            <div className="metric"><div className="metric-value num">{Math.round(result.accuracy * 100)}%</div><div className="small muted">الدقة</div></div>
+            <div className="metric metric-muted"><div className="metric-value num">25%</div><div className="small muted">مستوى الصدفة</div></div>
+            <div className="metric metric-muted"><div className="metric-value num">{result.n_trials}</div><div className="small muted">محاولة</div></div>
+          </div>
+          {result.accuracy < 0.4 ? (
+            <div className="banner banner-warn">
+              قريبة من الصدفة — النموذج بالكاد يميّز أوامرك. جرّب: تحقق من جودة C3 وC4، تخيّل الإحساس بالحركة لا صورتها،
+              وأعد المعايرة بمحاولات أكثر. كثيرون يحتاجون عدة جلسات تدريب. (مع الجهاز المحاكى هذه النتيجة متوقعة: لا دماغ فيه.)
+            </div>
+          ) : (
+            <p className="small">
+              سرعة الكتابة المتوقعة: {speedLabel(result.spelling.median_chars_per_minute, result.spelling.completion_rate)}.
+            </p>
+          )}
+          <p className="small faint">
+            قيست بتقسيم داخلي لجلستك نفسها — تقدير متفائل: في يوم آخر تنخفض الدقة عادة، فأعد المعايرة في بداية كل جلسة.
+          </p>
+          <CommandLegend commands={result.commands} title="توزيع الأوامر الذي اختير لك (من معايرتك فقط):" />
+          <div className="row-actions">
+            <button className="btn btn-primary" onClick={onType}><Play size={15} aria-hidden /> ابدأ الكتابة</button>
+            <button className="btn" onClick={onExit}><RotateCcw size={15} aria-hidden /> رجوع</button>
+          </div>
+        </section>
+      )}
+    </>
+  );
+}
+
+function LiveTyping({ target, minConfidence, onExit }: { target: string; minConfidence: number; onExit: () => void }) {
+  const extra: Record<string, string | number> = { task: "speller", min_confidence: minConfidence };
+  if (target.trim()) extra.target = target.trim();
+  const live = useLiveStream("device", 1, 0, extra);
+  const s = live.last?.speller as SpellerLive | undefined;
+  const prompt = s ? spellerPrompt(s) : { title: "جارٍ الاتصال بالجهاز…", tone: "info" };
+  const byCommand = Object.fromEntries((s?.commands ?? []).map((c) => [c.command, c]));
+  return (
+    <>
+      {live.error && <div className="banner banner-bad">{live.error}</div>}
+      <section className={`card cue cue-${prompt.tone}`} aria-live="assertive">
+        <div className="cue-title">{prompt.title}</div>
+        {s?.suggested && byCommand[s.suggested] && (
+          <div className="cue-hint">للوصول إلى «{s.target}»: تخيّل {byCommand[s.suggested].imagine} ({byCommand[s.suggested].action})</div>
+        )}
+        {s?.done && <div className="cue-hint">اكتملت الجملة ✔</div>}
+      </section>
+      {s && <CommandLegend commands={s.commands} title="أوامرك:" />}
+      <Board view={s?.view ?? { text: "", group: null, cursor: 0, items: [] }} target={s?.target} />
+      <div className="grid-2">
+        <section className="card">
+          <h2>آخر أمر</h2>
+          {s?.last ? (
+            <>
+              <p>
+                فهم النموذج: <strong>تخيّل {byCommand[s.last.decoded]?.imagine}</strong> ({byCommand[s.last.decoded]?.action}){" "}
+                {s.last.executed === null ? <span className="pill">امتنع — ثقة منخفضة</span> : <span className="pill pill-info">نُفّذ</span>}
+              </p>
+              <div className="probs">
+                {s.commands.map((c) => {
+                  const p = s.last!.probs[c.command] ?? 0;
+                  return (
+                    <div key={c.command} className="prob-row">
+                      <span className="prob-label">{c.imagine} <span className="faint small">({c.action})</span></span>
+                      <div className="meter"><div className="meter-fill" style={{ width: `${Math.round(p * 100)}%` }} /></div>
+                      <span className="num small">{Math.round(p * 100)}%</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          ) : <p className="muted">أول أمر بعد لحظات.</p>}
+        </section>
+        <section className="card">
+          <h2>الجلسة</h2>
+          <dl className="facts">
+            <dt>الأوامر</dt><dd className="num">{s?.count ?? 0}</dd>
+            <dt>الوقت</dt><dd className="num">{formatClock((s?.minutes ?? 0) * 60)}</dd>
+          </dl>
+          <QualityChips names={live.hello?.ch_names ?? []} quality={live.last?.quality} />
+          <div className="row-actions">
+            <button className="btn" onClick={onExit}><Square size={14} aria-hidden /> أوقف</button>
+          </div>
+        </section>
+      </div>
+    </>
   );
 }
 

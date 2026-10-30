@@ -65,9 +65,15 @@ def analyze_edf(path: Path, original_name: str) -> dict:
         raise AnalysisError(f"تعذّرت قراءة الملف كـ EDF: {exc}") from exc
     idx = select_channels(raw.ch_names)
     if idx is None:
-        raise AnalysisError(
-            "الملف لا يحتوي الأقطاب الثنائية الـ18 التي تدرّب عليها النموذج "
-            "(FP1-F7، F7-T7، ... CZ-PZ). النموذج لا يصلح لتركيب أقطاب مختلف.")
+        # ليس بتركيب CHB-MIT الثنائي — ربما تسجيل من جهازك (كل قطب مقابل مرجع)
+        from . import device
+
+        try:
+            return device.analyze_referential(path, original_name)
+        except ValueError as exc:
+            raise AnalysisError(
+                "الملف لا يحتوي الأقطاب الثنائية الـ18 التي تدرّب عليها النموذج "
+                f"(FP1-F7، F7-T7، ... CZ-PZ). {exc}") from exc
     raw.pick(idx).load_data(verbose="error")  # نقرأ القنوات الـ18 فقط من القرص
     if float(raw.info["sfreq"]) != FS:
         raw.resample(FS, verbose="error")  # النموذج تدرّب على 256 عيّنة/ثانية

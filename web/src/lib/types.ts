@@ -12,6 +12,8 @@ export type Hello = {
   events: KnownEvent[];
   bands: string[];
   duration_sec: number | null;
+  /** اسم ملف EDF الذي تُحفظ فيه هذه الجلسة، إن طُلب التسجيل */
+  recording?: string | null;
 };
 
 export type Frame = {
@@ -20,6 +22,7 @@ export type Frame = {
   samples: number[][];
   bands?: number[][];
   quality?: Quality[];
+  recording_sec?: number;
   [analyzer: string]: unknown;
 };
 
@@ -80,7 +83,14 @@ export type EpiResult = {
   warnings?: string[];
 };
 
-export type SeizureLive = { prob: number; alarm: boolean; threshold: number };
+export type SeizureLive = {
+  prob: number;
+  alarm: boolean;
+  threshold: number;
+  /** من جهازك (النموذج العام المجهّز لأقطابه) لا من تسجيل محفوظ */
+  device?: boolean;
+  note?: string | null;
+};
 
 // ---------- الكتابة بالدماغ ----------
 
@@ -180,4 +190,85 @@ export type MentalLive = {
   truth?: string;
   low?: string;
   high?: string;
+  /** من جهازك: قراءة لكل مقياس مجهّز لأقطابه */
+  scales?: { id: string; title: string; low: string; high: string; value: number }[];
+};
+
+// ---------- جهازك ----------
+
+export type Connection = "none" | "serial" | "bluetooth";
+
+export type BoardInfo = {
+  id: string;
+  label: string;
+  connection: Connection;
+  fs: number;
+  n_channels: number;
+  default_names: string[];
+};
+
+export type DeviceConfig = { board: string; serial_port: string; mac_address: string; ch_names: string[] };
+
+export type ReadinessStatus = "ready" | "needs_prepare" | "needs_calibration" | "unsupported";
+
+export type Readiness = {
+  title: string;
+  track: "live" | "motor_imagery" | "mental_state" | "epilepsy";
+  status: ReadinessStatus;
+  reason: string | null;
+  missing_recommended?: string[];
+  calibrated_at?: string | null;
+  accuracy?: number | null;
+  pairs?: string[];
+  n_pairs_total?: number;
+  missing_electrodes?: string[];
+  scales?: { scale: string; title: string; used: string[]; n_dataset_channels: number; supported: boolean; prepared: boolean }[];
+};
+
+export type PrepareJob = { status: "idle" | "running" | "done" | "error"; log: string[]; elapsed_sec: number | null };
+
+export type DeviceState = {
+  config: DeviceConfig | null;
+  boards: BoardInfo[];
+  standard_names: string[];
+  readiness: Readiness[] | null;
+  prepare: PrepareJob;
+};
+
+export type CommandInfo = { command: SpellerCommand; class: string; imagine: string; action: string; icon: string };
+
+export type CalibrationResult = {
+  accuracy: number;
+  balanced_accuracy: number;
+  chance: number;
+  recall: Record<string, number>;
+  commands: CommandInfo[];
+  spelling: SpellingStats;
+  n_trials: number;
+};
+
+export type CalibrationLive = {
+  phase: "lead_in" | "prepare" | "imagine" | "rest" | "training" | "done" | "error";
+  n_trials: number;
+  collected: number;
+  per_class: number;
+  trial?: number;
+  remaining_sec?: number;
+  class?: string | null;
+  imagine?: string | null;
+  result?: CalibrationResult | null;
+  error?: string | null;
+};
+
+export type SpellerLive = {
+  phase: "lead_in" | "prepare" | "imagine" | "result";
+  remaining_sec: number;
+  view: SpellerView;
+  last: { decoded: SpellerCommand; executed: SpellerCommand | null; confidence: number; probs: Record<SpellerCommand, number> } | null;
+  count: number;
+  minutes: number;
+  commands: CommandInfo[];
+  target?: string;
+  done?: boolean;
+  suggested?: SpellerCommand | null;
 };

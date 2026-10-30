@@ -18,7 +18,9 @@ type ClassSummary = {
 const pct = (v: number) => `${Math.round(v * 100)}%`;
 
 // ترتيب العرض: الأقوى والأبسط أولاً، ثم الأصعب
-const DISPLAY_ORDER = ["epilepsy_patient_specific", "epilepsy_general", "motor_imagery", "mental_focus", "mental_stress"];
+const DISPLAY_ORDER = ["epilepsy_patient_specific", "epilepsy_general", "motor_imagery", "mental_focus", "mental_stress",
+  // نماذج جهازك (بعد «جهّز النماذج» والمعايرة)
+  "device_speller", "device_mental_focus", "device_mental_stress", "device_epilepsy"];
 const rank = (id: string) => (DISPLAY_ORDER.includes(id) ? DISPLAY_ORDER.indexOf(id) : DISPLAY_ORDER.length);
 const byDisplayOrder = (a: ModelReport, b: ModelReport) => rank(a.model_id) - rank(b.model_id);
 

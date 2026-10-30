@@ -10,3 +10,5 @@ web/dist/
 web/test-results/
 web/playwright-report/
 *.tsbuildinfo
+# نماذج جهازك وتقاريرها: خاصة بأقطاب جهازك وبك (تُنشأ من صفحة «جهازك» والمعايرة)
+models/device_*

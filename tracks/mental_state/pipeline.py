@@ -18,6 +18,7 @@ from sklearn.preprocessing import StandardScaler
 from core.config import MAINS_HZ
 from core.features.bandpower import BANDS, relative_band_powers
 from core.signal.filters import apply_causal, make_chain
+from core.signal.montage import find
 from core.signal.windows import window_batches
 
 from .data import CHANNELS
@@ -29,30 +30,52 @@ CALIB_SEC = 60.0      # دقيقة الراحة الأولى = خط الأساس
 BANDS4 = {k: BANDS[k] for k in ("delta", "theta", "alpha", "beta")}  # جاما مفلترة في EEGMAT
 FRONTAL = ["Fz", "F3", "F4"]
 POSTERIOR = ["P3", "P4", "Pz", "O1", "O2"]
+# بدائل لجهاز لا يملك الأقطاب المعتادة (يُعاد تدريب النموذج على أقطابه فتبقى الميزات متّسقة)
+FRONTAL_FALLBACK = ["F1", "F2", "F5", "F6", "F7", "F8", "AF3", "AF4", "Fp1", "Fp2", "FC1", "FC2"]
+POSTERIOR_FALLBACK = ["P1", "P2", "P7", "P8", "PO3", "PO4", "POz", "PO7", "PO8", "Oz"]
 
 BAND_AR = {"delta": "دلتا", "theta": "ثيتا", "alpha": "ألفا", "beta": "بيتا"}
 
 
+def channel_groups(channels: list[str]) -> dict:
+    """أي الأقطاب تدخل في النسب الثلاث. مع الأقطاب الـ19 كاملة: Fz/F3/F4 أمامياً و P3/P4/Pz/O1/O2 خلفياً."""
+    def indices(names):
+        return [i for i in find(channels, names) if i is not None]
+
+    frontal = indices(FRONTAL) or indices(FRONTAL_FALLBACK)
+    posterior = indices(POSTERIOR) or indices(POSTERIOR_FALLBACK)
+    f3, f4 = find(channels, ["F3", "F4"])
+    return {"frontal": frontal, "posterior": posterior,
+            "faa": (f4, f3) if f3 is not None and f4 is not None else None}
+
+
 def feature_names(channels: list[str] = CHANNELS) -> list[str]:
     per_channel = [f"{BAND_AR[b]} عند {ch}" for ch in channels for b in BANDS4]
-    return per_channel + ["ثيتا/بيتا أمامياً", "ألفا/بيتا خلفياً", "عدم تناظر ألفا الأمامي"]
+    extra = ["ثيتا/بيتا أمامياً", "ألفا/بيتا خلفياً"]
+    if channel_groups(channels)["faa"]:
+        extra.append("عدم تناظر ألفا الأمامي")
+    return per_channel + extra
 
 
 def window_features(windows: np.ndarray, fs: float, channels: list[str] = CHANNELS) -> np.ndarray:
-    """(نوافذ، قنوات، عيّنات) ← (نوافذ، 4 × القنوات + 3 ميزات)."""
+    """(نوافذ، قنوات، عيّنات) ← (نوافذ، 4 × القنوات + 3 ميزات)، أو ميزتان إن لم يوجد F3 وF4."""
+    groups = channel_groups(channels)
+    if not groups["frontal"] or not groups["posterior"]:
+        raise ValueError("المقياس يحتاج قطباً أمامياً واحداً على الأقل وقطباً خلفياً واحداً")
     rel = relative_band_powers(windows, fs, BANDS4)  # (نوافذ، قنوات، 4)
     log_rel = np.log(np.maximum(rel, 1e-6))
-    idx = {c: i for i, c in enumerate(channels)}
     b = {name: i for i, name in enumerate(BANDS4)}
 
-    def mean_band(chs, band):
-        return rel[:, [idx[c] for c in chs], b[band]].mean(axis=1)
+    def mean_band(idx, band):
+        return rel[:, idx, b[band]].mean(axis=1)
 
-    theta_beta = np.log(mean_band(FRONTAL, "theta") / mean_band(FRONTAL, "beta"))
-    alpha_beta = np.log(mean_band(POSTERIOR, "alpha") / mean_band(POSTERIOR, "beta"))
-    faa = log_rel[:, idx["F4"], b["alpha"]] - log_rel[:, idx["F3"], b["alpha"]]
+    ratios = [np.log(mean_band(groups["frontal"], "theta") / mean_band(groups["frontal"], "beta")),
+              np.log(mean_band(groups["posterior"], "alpha") / mean_band(groups["posterior"], "beta"))]
+    if groups["faa"]:
+        f4, f3 = groups["faa"]
+        ratios.append(log_rel[:, f4, b["alpha"]] - log_rel[:, f3, b["alpha"]])
     return np.concatenate([log_rel.reshape(len(rel), -1),
-                           np.stack([theta_beta, alpha_beta, faa], axis=1)], axis=1).astype(np.float32)
+                           np.stack(ratios, axis=1)], axis=1).astype(np.float32)
 
 
 def recording_features(data_uv: np.ndarray, fs: float,

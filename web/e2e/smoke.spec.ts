@@ -51,6 +51,29 @@ test("الكتابة بالدماغ: المحاكاة تكتب بمحاولات 
   await expect(page.locator(".typed")).not.toContainText("أ");
 });
 
+test("جهازك: الإعداد والجاهزية، ثم البث المباشر من الجهاز المحاكى", async ({ page, request }) => {
+  // الاختبار يغيّر إعداد الجهاز المحفوظ — نعيده كما كان في النهاية
+  const before = await (await request.get("/api/device")).json();
+  try {
+    await page.goto("/#/device");
+    await expect(page.getByRole("heading", { name: "جهازك" })).toBeVisible();
+    await page.getByRole("combobox").first().selectOption("synthetic");
+    await expect(page.locator(".channel input")).toHaveCount(16);
+    await page.getByRole("button", { name: /احفظ الإعداد/ }).click();
+    await expect(page.getByText("حُفظ", { exact: true })).toBeVisible();
+    await expect(page.locator(".ready-card")).toHaveCount(4);
+    await expect(page.locator(".ready-card").filter({ hasText: "الكتابة بالدماغ" })).toBeVisible();
+
+    await page.goto("/#/?source=device");
+    await expect(page.getByText("جهاز متصل", { exact: true })).toBeVisible();
+    await expect(page.locator(".band-row")).toHaveCount(5);
+    await expect(page.locator(".chip")).toHaveCount(16);
+  } finally {
+    if (before.config) await request.put("/api/device", { data: before.config });
+    else await request.delete("/api/device");
+  }
+});
+
 test("الحالة الذهنية: المقياس يتحرك مع الزمن ويعرض حدوده بصدق", async ({ page }) => {
   await page.goto("/#/state");
   await expect(page.getByRole("heading", { name: "الحالة الذهنية" })).toBeVisible();

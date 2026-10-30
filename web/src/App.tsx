@@ -1,5 +1,6 @@
-import { Activity, ChartColumn, Gauge, HeartPulse, Keyboard } from "lucide-react";
+import { Activity, ChartColumn, Cpu, Gauge, HeartPulse, Keyboard } from "lucide-react";
 import { NavLink, Route, Routes } from "react-router-dom";
+import { DevicePage } from "./pages/DevicePage";
 import { EpilepsyPage } from "./pages/EpilepsyPage";
 import { LivePage } from "./pages/LivePage";
 import { MentalPage } from "./pages/MentalPage";
@@ -12,6 +13,7 @@ const NAV = [
   { to: "/speller", label: "الكتابة بالدماغ", icon: Keyboard },
   { to: "/state", label: "الحالة الذهنية", icon: Gauge },
   { to: "/models", label: "النماذج ونتائجها", icon: ChartColumn },
+  { to: "/device", label: "جهازك", icon: Cpu },
 ];
 
 export default function App() {
@@ -40,6 +42,7 @@ export default function App() {
           <Route path="/epilepsy" element={<EpilepsyPage />} />
           <Route path="/speller" element={<SpellerPage />} />
           <Route path="/state" element={<MentalPage />} />
+          <Route path="/device" element={<DevicePage />} />
         </Routes>
       </main>
     </div>

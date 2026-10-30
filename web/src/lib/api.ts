@@ -8,3 +8,15 @@ export async function getJson<T>(path: string): Promise<T> {
   }
   return res.json() as Promise<T>;
 }
+
+/** POST/PUT/DELETE بجسم JSON — رسالة الخطأ من الخادم كما هي (عربية ومفهومة). */
+export async function sendJson<T>(method: "POST" | "PUT" | "DELETE", path: string, body?: unknown): Promise<T> {
+  const res = await fetch(path, {
+    method,
+    headers: body === undefined ? undefined : { "Content-Type": "application/json" },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.detail ?? `خطأ (${res.status})`);
+  return data as T;
+}

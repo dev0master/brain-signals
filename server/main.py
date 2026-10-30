@@ -8,6 +8,7 @@
 import asyncio
 import shutil
 import tempfile
+import threading
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
@@ -17,12 +18,16 @@ from pydantic import BaseModel, Field
 
 from core.config import ensure_dirs
 from core.evaluation.report import load_report, load_reports
+from tracks.epilepsy import device as epilepsy_device
 from tracks.epilepsy import service as epilepsy
+from tracks.mental_state import device as mental_device
 from tracks.mental_state import service as mental
+from tracks.motor_imagery import device as mi_device
 from tracks.motor_imagery import service as speller
 
+from . import device
 from .session import LiveSession
-from .sources import list_sources, open_source, source_path
+from .sources import is_recording, list_sources, open_source, source_path
 
 FRAME_SEC = 0.1  # الواجهة تُحدَّث 10 مرات في الثانية
 
@@ -101,6 +106,45 @@ def sources() -> list[dict]:
     return list_sources()
 
 
+# ---------- جهازك ----------
+
+class DeviceConfig(BaseModel):
+    board: str
+    serial_port: str = ""
+    mac_address: str = ""
+    ch_names: list[str] | None = None
+
+
+@app.get("/api/device")
+def device_state() -> dict:
+    return device.state()
+
+
+@app.put("/api/device")
+def device_save(cfg: DeviceConfig) -> dict:
+    try:
+        device.save_config(cfg.model_dump())
+    except device.ConfigError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    return device.state()
+
+
+@app.delete("/api/device")
+def device_delete() -> dict:
+    device.delete_config()
+    return device.state()
+
+
+@app.post("/api/device/prepare")
+def device_prepare() -> dict:
+    cfg = device.load_config()
+    if cfg is None:
+        raise HTTPException(409, "أعدّ الجهاز أولاً")
+    if not device.JOB.start(cfg["ch_names"]):
+        raise HTTPException(409, "التجهيز يعمل الآن")
+    return device.state()
+
+
 @app.get("/api/models")
 def models() -> list[dict]:
     return load_reports()
@@ -144,35 +188,91 @@ def epilepsy_analyze(file: UploadFile) -> dict:
             raise HTTPException(422, str(exc)) from exc
 
 
+TASKS = ("", "mi_calibration", "speller")
+
+
+def make_session(source: str, speed: float, start: float, task: str, record: bool,
+                 per_class: int, min_confidence: float, target: str) -> LiveSession:
+    if task not in TASKS:
+        raise ValueError(f"مهمة غير معروفة: {task}")
+    if task and source != "device":
+        raise ValueError("المعايرة والكتابة تحتاجان جهازاً — أعدّه من صفحة «جهازك» "
+                         "(يمكن اختيار «جهاز BrainFlow محاكى» للتجربة بلا عتاد)")
+    src = open_source(source, speed=speed, start_sec=start)
+    record_to = None
+    if task == "mi_calibration":
+        record_to = device.recording_path("calibration")  # تُحفظ دائماً مع علامة كل أمر
+    elif record and src.info.kind == "device":
+        record_to = device.recording_path("session")
+    session = LiveSession(src, record_to=record_to)
+    info = src.info
+    board = (device.load_config() or {}).get("board")
+    if task == "mi_calibration":
+        session.add_analyzer("calibration", mi_device.Calibration(info.ch_names, info.fs, board, per_class))
+        return session
+    if task == "speller":
+        bundle = mi_device.person_model(info.ch_names, info.fs, board)
+        if bundle is None:
+            raise ValueError("لا توجد معايرة لك على هذا الجهاز بهذه الأقطاب — ابدأ بالمعايرة.")
+        session.add_analyzer("speller", mi_device.LiveSpeller(bundle, info.ch_names, info.fs, min_confidence, target))
+        return session
+    path = source_path(source)
+    if path is not None and (analyzer := epilepsy.live_analyzer(path)):
+        session.add_analyzer("seizure", analyzer)
+    if path is not None and (analyzer := mental.live_analyzer(path)):
+        session.add_analyzer("mental", analyzer)
+    if source == "device" or (path is not None and is_recording(path)):
+        # جهازك أو تسجيل منه: نماذج مجهّزة لأقطابه (إن وُجدت)
+        if (analyzer := mental_device.live_analyzer(info.ch_names, info.fs)):
+            session.add_analyzer("mental", analyzer)
+        if (analyzer := epilepsy_device.live_analyzer(info.ch_names, info.fs)):
+            session.add_analyzer("seizure", analyzer)
+    return session
+
+
 @app.websocket("/ws")
 async def stream(ws: WebSocket, source: str = "synthetic", speed: float = 1.0,
-                 start: float = 0.0) -> None:
+                 start: float = 0.0, task: str = "", record: int = 0, per_class: int = 10,
+                 min_confidence: float = 0.0, target: str = "") -> None:
     """بث مباشر: رسالة hello ثم رسالة frame كل 100ms.
 
     الواجهة تغيّر المصدر بإغلاق الاتصال وفتح اتصال جديد بمعامل source مختلف.
     start: من أي ثانية في التسجيل نبدأ (للقفز إلى ما قبل نوبة مثلاً).
+    task: "" بث عادي، "mi_calibration" جلسة معايرة الكتابة بالدماغ، "speller" كتابة مباشرة بجهازك.
+    record: 1 = احفظ الجلسة كملف EDF عند الإغلاق (للجهاز فقط).
     """
     await ws.accept()
     try:
-        session = LiveSession(open_source(source, speed=speed, start_sec=start))
-        path = source_path(source)
-        if path is not None and (analyzer := epilepsy.live_analyzer(path)):
-            session.add_analyzer("seizure", analyzer)
-        if path is not None and (analyzer := mental.live_analyzer(path)):
-            session.add_analyzer("mental", analyzer)
-    except Exception as exc:  # ملف تالف أو مصدر غير موجود
+        session = await asyncio.to_thread(make_session, source, speed, start, task, bool(record),
+                                          per_class, min_confidence, target)
+    except Exception as exc:  # ملف تالف، مصدر غير موجود، أو جهاز غير معَدّ
         await ws.send_json({"type": "error", "message": str(exc)})
         await ws.close()
         return
     try:
         await ws.send_json(session.hello())
         while True:
-            await ws.send_json(session.step())
+            # المعالجة في خيط منفصل: تدريب نموذج المعايرة أو اتصال الجهاز قد يأخذ ثوانٍ
+            await ws.send_json(await asyncio.to_thread(session.step))
             await asyncio.sleep(FRAME_SEC)
     except WebSocketDisconnect:
         pass
+    except Exception as exc:  # انقطع الجهاز أو تعذّر الاتصال به
+        try:
+            await ws.send_json({"type": "error", "message": str(exc)})
+            await ws.close()
+        except Exception:
+            pass
     finally:
+        # الإغلاق (وحفظ التسجيل) في خيط مستقل: يكتمل حتى لو أُلغيت هذه المهمة عند انقطاع الاتصال
+        threading.Thread(target=close_quietly, args=(session,)).start()
+
+
+def close_quietly(session: LiveSession) -> None:
+    try:
         session.close()
+    except Exception as exc:
+        print(f"تعذّر إغلاق الجلسة أو حفظ تسجيلها: {exc}")
 
 
 # بعد بناء الواجهة (npm run build) يخدمها الخادم نفسه على نفس المنفذ

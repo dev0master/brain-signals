@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { BandBars } from "../components/BandBars";
 import { QualityChips } from "../components/QualityChips";
 import { SignalCanvas } from "../components/SignalCanvas";
@@ -25,7 +25,9 @@ export function LivePage() {
   const startSec = Number(params.get("start") ?? 0) || 0;
   const [speed, setSpeed] = useState(1);
   const [scale, setScale] = useState(100);
-  const live = useLiveStream(source, speed, startSec);
+  const [record, setRecord] = useState(false);
+  const isDevice = source === "device";
+  const live = useLiveStream(source, isDevice ? 1 : speed, startSec, isDevice && record ? { record: 1 } : {});
   const { hello, last } = live;
   const t = last?.t ?? startSec;
   const inEvent = hello ? eventAt(hello.events, t) : null;
@@ -35,6 +37,7 @@ export function LivePage() {
   const status = STATUS[live.status];
   const options = sources.data ?? [];
   const known = options.some((s) => s.id === source);
+  const hasDevice = options.some((s) => s.id === "device");
 
   return (
     <div className="page">
@@ -42,7 +45,8 @@ export function LivePage() {
         <h1>البث المباشر</h1>
         <p className="muted">
           هنا ترى إشارات الدماغ كما تصل لحظة بلحظة: كل سطر قطب على الرأس، والزمن يتقدم نحو اليمين.
-          لا يوجد جهاز متصل الآن، فنعيد تشغيل تسجيلات حقيقية بسرعة الزمن الفعلي — وسيعمل كل شيء بنفس الطريقة مع جهاز.
+          التسجيلات المحفوظة تُعاد بسرعة الزمن الفعلي كأنها من جهاز، ومع جهازك ترى إشارتك أنت.
+          {!hasDevice && <> لربط جهاز افتح صفحة <Link to="/device">جهازك</Link>.</>}
         </p>
       </header>
 
@@ -56,12 +60,19 @@ export function LivePage() {
             ))}
           </select>
         </label>
-        <label>
-          السرعة
-          <select value={speed} onChange={(e) => setSpeed(Number(e.target.value))}>
-            {[1, 2, 5, 10].map((v) => <option key={v} value={v}>{v === 1 ? "الزمن الحقيقي" : `${v}×`}</option>)}
-          </select>
-        </label>
+        {isDevice ? (
+          <label className="check">
+            <input type="checkbox" checked={record} onChange={(e) => setRecord(e.target.checked)} />
+            احفظ الجلسة كملف EDF
+          </label>
+        ) : (
+          <label>
+            السرعة
+            <select value={speed} onChange={(e) => setSpeed(Number(e.target.value))}>
+              {[1, 2, 5, 10].map((v) => <option key={v} value={v}>{v === 1 ? "الزمن الحقيقي" : `${v}×`}</option>)}
+            </select>
+          </label>
+        )}
         <label>
           التكبير
           <select value={scale} onChange={(e) => setScale(Number(e.target.value))}>
@@ -74,11 +85,25 @@ export function LivePage() {
         <span className="num pill">{formatClock(t)}{hello?.duration_sec ? ` / ${formatClock(hello.duration_sec)}` : ""}</span>
       </section>
 
-      {live.error && <div className="banner banner-bad">{live.error}</div>}
+      {live.error && (
+        <div className="banner banner-bad">
+          {live.error}{isDevice && <> — راجع الإعداد في صفحة <Link to="/device">جهازك</Link>.</>}
+        </div>
+      )}
+      {hello?.recording && (
+        <div className="banner banner-info small">
+          يُسجَّل: <span className="num">{formatClock(last?.recording_sec ?? 0)}</span> — يُحفظ عند مغادرة الصفحة باسم{" "}
+          <span className="ltr">{hello.recording}</span>، ثم يظهر في قائمة المصادر لإعادة تشغيله، ويمكن رفعه في صفحة فحص الصرع.
+        </div>
+      )}
       {(seizure || inEvent) && (
         <section className="card seizure-live">
           <div>
-            <div className="small muted">كاشف الصرع — نموذج لم يرَ هذا التسجيل أثناء تدريبه</div>
+            <div className="small muted">
+              {seizure?.device
+                ? "كاشف الصرع — النموذج العام المجهّز لأقطاب جهازك (للتعلّم فقط، ليس تشخيصاً)"
+                : "كاشف الصرع — نموذج لم يرَ هذا التسجيل أثناء تدريبه"}
+            </div>
             {seizure ? (
               <div className="seizure-row">
                 <div className="meter"><div className={`meter-fill ${seizure.prob >= seizure.threshold ? "hot" : ""}`}
@@ -87,22 +112,41 @@ export function LivePage() {
                 <span className={`pill ${seizure.alarm ? "pill-bad" : "pill-ok"}`}>{seizure.alarm ? "إنذار: يشتبه بنوبة" : "لا إنذار"}</span>
               </div>
             ) : <p className="small faint">لا توجد توقعات لهذا التسجيل — شغّل التدريب.</p>}
+            {seizure?.note && <p className="small faint">{seizure.note}</p>}
           </div>
-          <div className="truth">
-            <div className="small muted">ما حدده الأطباء</div>
-            {inEvent
-              ? <span className="pill pill-bad">نوبة الآن ({formatClock(inEvent.start)} – {formatClock(inEvent.end)})</span>
-              : <span className="pill">لا نوبة في هذه اللحظة</span>}
-          </div>
+          {!seizure?.device && (
+            <div className="truth">
+              <div className="small muted">ما حدده الأطباء</div>
+              {inEvent
+                ? <span className="pill pill-bad">نوبة الآن ({formatClock(inEvent.start)} – {formatClock(inEvent.end)})</span>
+                : <span className="pill">لا نوبة في هذه اللحظة</span>}
+            </div>
+          )}
         </section>
       )}
 
       {mental && (
         <section className="card seizure-live">
           <div>
-            <div className="small muted">المقياس الذهني — نموذج لم يرَ هذا الشخص</div>
+            <div className="small muted">
+              {mental.scales || (mental.calibrating && isDevice)
+                ? "الحالة الذهنية — نموذج مجهّز لأقطاب جهازك، يقيس انحرافك عن دقيقة راحتك"
+                : "المقياس الذهني — نموذج لم يرَ هذا الشخص"}
+            </div>
             {mental.calibrating ? (
-              <p className="small">معايرة: النظام يتعرّف على إشارة الشخص وهو مرتاح… باقٍ <span className="num">{mental.remaining_sec}</span> ث</p>
+              <p className="small">
+                معايرة: النظام يتعرّف على إشارة الشخص وهو مرتاح… باقٍ <span className="num">{mental.remaining_sec}</span> ث
+                {isDevice && " — اجلس مرتاحاً دون حركة ولا كلام."}
+              </p>
+            ) : mental.scales ? (
+              mental.scales.map((s) => (
+                <div key={s.id} className="seizure-row">
+                  <span className="small scale-end">{s.low}</span>
+                  <div className="meter"><div className="meter-fill" style={{ width: `${Math.round(s.value * 100)}%` }} /></div>
+                  <span className="small scale-end">{s.high}</span>
+                  <span className="num small">{Math.round(s.value * 100)}%</span>
+                </div>
+              ))
             ) : mental.value !== undefined && (
               <div className="seizure-row">
                 <span className="small">{mental.low}</span>

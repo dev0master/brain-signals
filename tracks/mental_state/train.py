@@ -50,11 +50,13 @@ class SubjectData:
     trial: np.ndarray | None = None   # معرّف المحاولة لكل نافذة (لتجميع النوافذ)
 
 
-def eegmat_subject(s: int) -> SubjectData:
+def eegmat_subject(s: int, channels: list[str] = eegmat.CHANNELS) -> SubjectData:
+    """channels: مجموعة جزئية من الأقطاب الـ19 (لنموذج يطابق أقطاب جهاز معيّن)."""
+    rows = [eegmat.CHANNELS.index(c) for c in channels]
     rest, fs = eegmat.load_recording(s, 1)
     task, _ = eegmat.load_recording(s, 2)
-    Xr, tr = recording_features(rest, fs)
-    Xt, tt = recording_features(task, fs)
+    Xr, tr = recording_features(rest[rows], fs, channels)
+    Xt, tt = recording_features(task[rows], fs, channels)
     rest_dur, task_dur = rest.shape[1] / fs, task.shape[1] / fs
     end_r = tr + WIN_SEC               # زمن نهاية كل نافذة
     calib = end_r <= CALIB_SEC
@@ -72,10 +74,11 @@ def eegmat_subject(s: int) -> SubjectData:
     )
 
 
-def sam40_subject(s: int, ratings: dict) -> SubjectData:
+def sam40_subject(s: int, ratings: dict, channels: list[str] = sam40.CHANNELS) -> SubjectData:
     """محاولات SAM40 منفصلة (25ث لكل منها)، نرصّها على خط زمني للعرض:
     استرخاء 1 = معايرة، استرخاء 2–3 = هادئ، ثم محاولات المهام الثلاث.
     (هذا ترتيب للعرض فقط، لا ترتيب التسجيل الفعلي.)"""
+    rows = [sam40.CHANNELS.index(c) for c in channels]
     trial_sec = sam40.load_trial("Relax", s, 1).shape[1] / sam40.FS
     X, y, t, rating, trial = [], [], [], [], []
     segments = []
@@ -85,7 +88,7 @@ def sam40_subject(s: int, ratings: dict) -> SubjectData:
     plan += [("Relax", k, "calm", "استرخاء") for k in (2, 3)]
     plan += [(task, k, "task", f"{label} {k}") for task, label in sam40.TASKS.items() for k in sam40.TRIALS]
     for kind, k, seg_kind, label in plan:
-        feats, starts = recording_features(sam40.load_trial(kind, s, k), sam40.FS, sam40.CHANNELS)
+        feats, starts = recording_features(sam40.load_trial(kind, s, k)[rows], sam40.FS, channels)
         segments.append({"kind": seg_kind, "label": label, "start": clock, "end": clock + trial_sec})
         if seg_kind == "calibration":
             baseline = feats

@@ -90,3 +90,24 @@ class ReplaySource(SignalSource):
             events=events or [],
         )
         return cls(data_uv, info, **kwargs)
+
+
+def save_edf(path: str | Path, data_uv: np.ndarray, fs: float, ch_names: list[str],
+             annotations: list[dict] | None = None) -> Path:
+    """يحفظ تسجيلاً (قنوات، عيّنات بالميكروفولت) كملف EDF — الصيغة التي تقرؤها برامج EEG الطبية،
+    ويعيد هذا النظام تشغيلها في البث المباشر.
+
+    annotations: [{"onset": ثانية، "duration": ثانية، "description": نص}] — مثل لحظة ظهور كل أمر في المعايرة.
+    """
+    import mne
+
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    info = mne.create_info(list(ch_names), fs, ch_types="eeg")
+    raw = mne.io.RawArray(np.asarray(data_uv, dtype=np.float64) * 1e-6, info, verbose="error")
+    if annotations:
+        raw.set_annotations(mne.Annotations([a["onset"] for a in annotations],
+                                            [a.get("duration", 0.0) for a in annotations],
+                                            [a["description"] for a in annotations]))
+    mne.export.export_raw(str(path), raw, fmt="edf", overwrite=True, verbose="error")
+    return path

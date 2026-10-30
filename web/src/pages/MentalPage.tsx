@@ -47,6 +47,14 @@ export function MentalPage() {
         </div>
       )}
       {scale && <ScaleView key={scale.id} scale={scale} />}
+      <section className="card">
+        <h2>قِس حالتك بجهازك</h2>
+        <p className="small muted">
+          بعد إعداد جهازك و«تجهيز النماذج» لأقطابه من صفحة <Link to="/device">جهازك</Link>، افتح{" "}
+          <Link to="/?source=device">البث المباشر بجهازك</Link>: دقيقة راحة أولاً (خط أساسك الشخصي)، ثم يتحرك المقياسان كل
+          ثانيتين. جرّب أن تحسب ذهنياً (مثل 1000 − 7 − 7 …) ثم تسترخي، وراقب الفرق.
+        </p>
+      </section>
     </div>
   );
 }

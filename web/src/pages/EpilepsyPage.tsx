@@ -78,6 +78,11 @@ export function EpilepsyPage() {
       <div className="banner banner-warn">
         أداة تعليمية وبحثية — ليست تشخيصاً. تشخيص الصرع يقوم به طبيب أعصاب بعد فحص كامل وتسجيلات أطول بكثير.
       </div>
+      <p className="small muted">
+        بجهازك: بعد «تجهيز النماذج» في صفحة <Link to="/device">جهازك</Link> يعمل الكاشف في{" "}
+        <Link to="/?source=device">البث المباشر</Link>، ويمكنك رفع تسجيلاتك المحفوظة هنا. يستخدم النموذج العام فقط —
+        لا يوجد نموذج يعرف نوبات شخصك.
+      </p>
 
       <div className="epi-layout">
         <aside className="card epi-list">
